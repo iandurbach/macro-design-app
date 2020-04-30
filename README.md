@@ -12,7 +12,7 @@ library(shiny)
 runGitHub("macro-design-app", "iandurbach")
 ```
 
-This requires that packages `shiny`, `dplyr`, `sf`, and `leaflet` are already installed. Otherwise, download or fork the repo as usual. Some test shapefiles are provided in the *data* folder of this repository.
+This requires that packages `shiny`, `dplyr`, `sf`, and `leaflet` are already installed. Otherwise, download or fork the repo as usual. Some test shapefiles are provided in the *data* folder of this repository. A brief how-to guide is in the *cheatsheet* folder.
 
 Note the binder link below fails, don't use it (to do).
 
