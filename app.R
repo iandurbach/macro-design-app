@@ -1,16 +1,27 @@
 library(shiny)
-
 library(dplyr)
-library(tidyr)
-library(readr)
-library(ggplot2)
+#library(tidyr)
+#library(ggplot2)
 library(sf)
-library(mapview)
 library(leaflet)
-library(htmltools)
-library(BalancedSampling)
 
-source("generate_Halton_pts.R")
+#source("generate_Halton_pts.R")
+generate_Halton_pts <- function(n = 100, seeds = c(0,0), bases = c(2,3)) {
+  
+  d <- length(bases)
+  pts <- c()
+  for (i in 1:d) {
+    b <- bases[i]
+    u <- seeds[i]
+    u_plus_k <- rep(u, n) + seq(0, n - 1)
+    xk <- (u_plus_k %% b)/b;
+    for (j in 1:(ceiling(logb(u+n,b)) + 2)) {
+      xk <- xk + (floor(u_plus_k/(b^j)) %% b)/(b^(j+1));
+    }
+    pts <- cbind(pts,xk)
+  }
+  return(pts)
+}
 
 reshapefile <- function(file_upload_data){
   ### rename uploaded files so it makes a sensible shapefile
@@ -56,8 +67,8 @@ ui <- bootstrapPage(
                 div(actionButton(inputId = "add_pts", label = "Add surveys"),
                     actionButton(inputId = "submit", label = "New seed"),
                     actionButton(inputId = "clear_pts", label = "Clear surveys"),
-                    style = "margin:2px"),
-                div(verbatimTextOutput("sb"), style = "margin:2px;width:200px;float:right")),
+                    style = "margin:2px")),
+                #div(verbatimTextOutput("sb"), style = "margin:2px;width:200px;float:right")),
   absolutePanel(bottom = 10, left = 10,
                 fluidRow(column(3, offset = 5, align="center",
                                 downloadButton("downloadData", "Download survey points"))))
@@ -75,7 +86,7 @@ server <- function(input, output, session) {
   })
   
   # set colours for stratification variable
-  pal <- reactive({colorFactor("YlOrRd", domain = nc_sf()$stratum_id)})
+  pal <- reactive({colorFactor("Set2", domain = nc_sf()$stratum_id)})
   
   micro_pts <- data.frame(lat = as.numeric(), lng = as.numeric())
   
@@ -310,19 +321,19 @@ server <- function(input, output, session) {
       addProviderTiles(eval(parse(text=paste0("providers$",input$basemap))))
   })
   
-  # measure of spatial balance
-  output$sb <- renderText({
-    N <- nrow(pts_sf_ll())
-    n <- nrow(existing_pts()) + nrow(new_pts())
-    p <- rep(n/N, N)
-    X <- pts_sf_ll() %>% st_set_geometry(NULL) %>% select(X,Y) %>% as.matrix()
-    s_exi <- existing_pts() %>% st_set_geometry(NULL) %>% select(pt_id) %>% unlist()
-    s_new <- new_pts() %>% st_set_geometry(NULL) %>% select(pt_id) %>% unlist()
-    s <- sort(c(s_exi, s_new))
-    
-    paste0("Spatial balance: ", round(BalancedSampling::sb(p, X, s), 3))
-    
-  })
+  # # measure of spatial balance
+  # output$sb <- renderText({
+  #   N <- nrow(pts_sf_ll())
+  #   n <- nrow(existing_pts()) + nrow(new_pts())
+  #   p <- rep(n/N, N)
+  #   X <- pts_sf_ll() %>% st_set_geometry(NULL) %>% select(X,Y) %>% as.matrix()
+  #   s_exi <- existing_pts() %>% st_set_geometry(NULL) %>% select(pt_id) %>% unlist()
+  #   s_new <- new_pts() %>% st_set_geometry(NULL) %>% select(pt_id) %>% unlist()
+  #   s <- sort(c(s_exi, s_new))
+  #   
+  #   paste0("Spatial balance: ", round(BalancedSampling::sb(p, X, s), 3))
+  #   
+  # })
   
   # remove all points on actionButton click
   observeEvent(c(input$clear_pts, input$seed, input$submit), {
@@ -344,8 +355,8 @@ server <- function(input, output, session) {
       paste0("surveypts_seed", input$seed, ".csv")
     },
     content = function(file) {
-      ex <- existing_pts() %>% st_set_geometry(NULL) %>% mutate(status = "existing") %>% select(pt_id, lat, lng, status, stratum_id, gridcell_id)
-      new <- new_pts() %>% st_set_geometry(NULL) %>% mutate(status = "new") %>% select(pt_id, lat, lng, status, stratum_id, gridcell_id)
+      ex <- existing_pts() %>% st_set_geometry(NULL) %>% mutate(status = "existing") %>% select(pt_id, lat, lng, status, stratum_id, ordered_id)
+      new <- new_pts() %>% st_set_geometry(NULL) %>% mutate(status = "new") %>% select(pt_id, lat, lng, status, stratum_id, ordered_id)
       file_to_write <- rbind(ex, new)
       write.csv(file_to_write, file, row.names = FALSE)
     }
